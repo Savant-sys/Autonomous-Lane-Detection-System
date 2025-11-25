@@ -3,7 +3,8 @@ import numpy as np
 
 # 0) Open the video
 # cap = cv2.VideoCapture("testdashcam.mp4")
-cap = cv2.VideoCapture("simplestraight.mp4")
+# cap = cv2.VideoCapture("simplestraight.mp4")
+cap = cv2.VideoCapture("testdashcam.mov")
 
 # Safety check
 if not cap.isOpened():
@@ -39,7 +40,7 @@ def filter_colors(frame):
     hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
 
     # White lane mask
-    lower_white = np.array([0, 180, 0])
+    lower_white = np.array([0, 135, 0])
     upper_white = np.array([255, 255, 255])
     white_mask = cv2.inRange(hls, lower_white, upper_white)
 
@@ -128,7 +129,7 @@ while True:
         cropped,
         rho=.95,
         theta=np.pi / 180,
-        threshold=15,
+        threshold=20,
         minLineLength=15,
         maxLineGap=100
     )
@@ -137,18 +138,36 @@ while True:
     line_image = np.zeros_like(frame)
 
     if lines is not None:
-        averaged_lines = average_slope_intercept(frame, lines)
+        # draw all lines (for debugging)
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
 
-        for x1, y1, x2, y2 in averaged_lines:
-            cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 8)
+            # Avoid vertical divide-by-zero
+            if x2 == x1:
+                continue
+
+            slope = (y2 - y1) / (x2 - x1)
+
+            # Only draw if it looks like a lane (angled line)
+            if abs(slope) > 0.5:
+                cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 5)
+
+        # # Draw averaged lanes
+        # averaged_lines = average_slope_intercept(frame, lines)
+
+        # for x1, y1, x2, y2 in averaged_lines:
+        #     cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 8)
 
     # 9) Overlay lines on original frame
     combo = cv2.addWeighted(frame, 0.8, line_image, 1, 1)
 
     # 10) Show windows
+    cv2.moveWindow("Filtered", 800, -100)
+    cv2.moveWindow("Edges Only", 800, 350)
+
+    cv2.imshow("Filtered", filtered)
     cv2.imshow("Edges Only", cropped)
     cv2.imshow("Lane Detection", combo)
-    cv2.imshow("Filtered", filtered)
 
     # Press 'q' to quit
     if cv2.waitKey(1) & 0xFF == ord('q'):
