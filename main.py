@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 
 # 0) Open the video
-# cap = cv2.VideoCapture("testdashcam.mp4")
+cap = cv2.VideoCapture("testdashcam.mp4")
 # cap = cv2.VideoCapture("simplestraight.mp4")
-cap = cv2.VideoCapture("testdashcam.mov")
+# cap = cv2.VideoCapture("testdashcam.mov")
 
 # Safety check
 if not cap.isOpened():
@@ -23,8 +23,8 @@ def region_of_interest(img):
     polygon = np.array([[
         (0, height),
         (width, height),
-        (int(width * 0.55), int(height * 0.6)),
-        (int(width * 0.45), int(height * 0.6))
+        (int(width * 0.55), int(height * 0.65)),
+        (int(width * 0.45), int(height * 0.65))
     ]], np.int32)
 
     # Fill the polygon with white on the mask
@@ -32,7 +32,7 @@ def region_of_interest(img):
 
     # Keep only the region inside the polygon
     masked_image = cv2.bitwise_and(img, mask)
-    return masked_image
+    return masked_image, mask
 
 
 def filter_colors(frame):
@@ -122,7 +122,7 @@ while True:
     edges = cv2.Canny(blur, 50, 150)
 
     # 6) Region of interest
-    cropped = region_of_interest(edges)
+    cropped, roi_mask = region_of_interest(edges)
 
     # 7) Hough Lines
     lines = cv2.HoughLinesP(
@@ -160,14 +160,18 @@ while True:
 
     # 9) Overlay lines on original frame
     combo = cv2.addWeighted(frame, 0.8, line_image, 1, 1)
+    cropped_combo = cv2.bitwise_and(combo, combo, mask=roi_mask)
 
-    # 10) Show windows
-    cv2.moveWindow("Filtered", 800, -100)
-    cv2.moveWindow("Edges Only", 800, 350)
+
+    # 10) Show windows # for macOS
+    # cv2.moveWindow("Filtered", 800, -100)
+    # cv2.moveWindow("Edges Only", 800, 350)
 
     cv2.imshow("Filtered", filtered)
     cv2.imshow("Edges Only", cropped)
     cv2.imshow("Lane Detection", combo)
+    cv2.imshow("Cropped Lane Detection", cropped_combo)
+    
 
     # Press 'q' to quit
     if cv2.waitKey(1) & 0xFF == ord('q'):
