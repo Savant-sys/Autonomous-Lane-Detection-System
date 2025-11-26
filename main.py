@@ -2,9 +2,7 @@ import cv2
 import numpy as np
 
 # 0) Open the video
-cap = cv2.VideoCapture("testdashcam.mp4")
-# cap = cv2.VideoCapture("simplestraight.mp4")
-# cap = cv2.VideoCapture("testdashcam.mov")
+cap = cv2.VideoCapture("testdashcam.mov")
 
 # Safety check
 if not cap.isOpened():
@@ -62,7 +60,7 @@ def make_coordinates(image, line_params):
 
     # y1 = bottom of the image, y2 = some height up (like horizon-ish)
     y1 = height
-    y2 = int(height * 0.6)
+    y2 = int(height * 0.7)
 
     # x = (y - b) / m  (rearranged y = mx + b)
     x1 = int((y1 - intercept) / slope)
@@ -85,10 +83,10 @@ def average_slope_intercept(image, lines):
         intercept = y1 - slope * x1
 
         # negative slope = left lane (in typical dashcam view)
-        if slope < -0.5:
+        if slope < -0.65:
             left_fits.append((slope, intercept))
         # positive slope = right lane
-        elif slope > 0.5:
+        elif slope > 0.65:
             right_fits.append((slope, intercept))
 
     lane_lines = []
@@ -138,25 +136,25 @@ while True:
     line_image = np.zeros_like(frame)
 
     if lines is not None:
-        # draw all lines (for debugging)
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
+        # # draw all lines (for debugging)
+        # for line in lines:
+        #     x1, y1, x2, y2 = line[0]
 
-            # Avoid vertical divide-by-zero
-            if x2 == x1:
-                continue
+        #     # Avoid vertical divide-by-zero
+        #     if x2 == x1:
+        #         continue
 
-            slope = (y2 - y1) / (x2 - x1)
+        #     slope = (y2 - y1) / (x2 - x1)
 
-            # Only draw if it looks like a lane (angled line)
-            if abs(slope) > 0.5:
-                cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 5)
+        #     # Only draw if it looks like a lane (angled line)
+        #     if abs(slope) > 0.5:
+        #         cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 5)
 
         # # Draw averaged lanes
-        # averaged_lines = average_slope_intercept(frame, lines)
+        averaged_lines = average_slope_intercept(frame, lines)
 
-        # for x1, y1, x2, y2 in averaged_lines:
-        #     cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 8)
+        for x1, y1, x2, y2 in averaged_lines:
+            cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
     # 9) Overlay lines on original frame
     combo = cv2.addWeighted(frame, 0.8, line_image, 1, 1)
@@ -164,8 +162,10 @@ while True:
 
 
     # 10) Show windows # for macOS
-    # cv2.moveWindow("Filtered", 800, -100)
-    # cv2.moveWindow("Edges Only", 800, 350)
+    cv2.moveWindow("Filtered", 800, -100)
+    cv2.moveWindow("Edges Only", 800, 350)
+    cv2.moveWindow("Lane Detection", 0, -100)
+    cv2.moveWindow("Cropped Lane Detection", 0, 350)
 
     cv2.imshow("Filtered", filtered)
     cv2.imshow("Edges Only", cropped)
