@@ -133,8 +133,12 @@ def fit_lane_curve(points, image):
 
     return curve_points
 
+# Initial empty point lists for preventing freaky lines
+prev_left_curve = None
+prev_right_curve = None
 
 while True:
+    
     # 1) Read a frame
     ret, frame = cap.read()
     if not ret:
@@ -194,8 +198,17 @@ while True:
     right_curve = fit_lane_curve(right_points, frame)
 
     if left_curve is not None:
-        cv2.polylines(line_image, [left_curve], isClosed=False, color=(0, 255, 0), thickness=2)
+        prev_left_curve = left_curve
+    elif prev_left_curve is not None:
+        left_curve = prev_left_curve
 
+    if right_curve is not None:
+        prev_right_curve = right_curve
+    elif prev_right_curve is not None:
+        right_curve = prev_right_curve
+
+    if left_curve is not None:
+        cv2.polylines(line_image, [left_curve], isClosed=False, color=(0, 255, 0), thickness=2)
     if right_curve is not None:
         cv2.polylines(line_image, [right_curve], isClosed=False, color=(0, 255, 0), thickness=2)
 
