@@ -19,10 +19,10 @@ def region_of_interest(img):
 
     # Polygon that covers the road area (bottom trapezoid)
     polygon = np.array([[
-        (0, height),
-        (width, height),
-        (int(width * 0.55), int(height * 0.65)),
-        (int(width * 0.45), int(height * 0.65))
+        (0, height * .94),
+        (width, height * .94),
+        (int(width * 0.55), int(height * 0.68)),
+        (int(width * 0.45), int(height * 0.68))
     ]], np.int32)
 
     # Fill the polygon with white on the mask
@@ -38,7 +38,7 @@ def filter_colors(frame):
     hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
 
     # White lane mask
-    lower_white = np.array([0, 135, 0])
+    lower_white = np.array([0, 125, 0])
     upper_white = np.array([255, 255, 255])
     white_mask = cv2.inRange(hls, lower_white, upper_white)
 
@@ -101,6 +101,39 @@ def average_slope_intercept(image, lines):
 
     return lane_lines
 
+def fit_lane_curve(points, image):
+    """
+    points: list of (x, y) tuples from Hough lines for one side (left or right)
+    image:  frame, used to know height
+    returns: array of points to draw as a smooth curve, or None
+    """
+    if len(points) < 5:
+        return None  # not enough data to fit a curve
+
+    pts = np.array(points)
+    xs = pts[:, 0]
+    ys = pts[:, 1]
+
+    # Fit x as a function of y: x = a*y^2 + b*y + c
+    a, b, c = np.polyfit(ys, xs, 2)
+
+    height = image.shape[0]
+    y_bottom = height        # bottom of the image
+    y_top = int(height * 0.73)   # how high the curve goes
+
+    # Generate many y values between bottom and top
+    y_values = np.linspace(y_bottom, y_top, num=30)
+
+    # Compute matching x for each y using the polynomial
+    x_values = a * (y_values ** 2) + b * y_values + c
+
+    # Stack into shape (N, 1, 2) for cv2.polylines
+    curve_points = np.stack((x_values, y_values), axis=1).astype(np.int32)
+    curve_points = curve_points.reshape((-1, 1, 2))
+
+    return curve_points
+
+
 while True:
     # 1) Read a frame
     ret, frame = cap.read()
@@ -117,7 +150,7 @@ while True:
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
 
     # 5) Edges
-    edges = cv2.Canny(blur, 50, 150)
+    edges = cv2.Canny(blur, 45, 150)
 
     # 6) Region of interest
     cropped, roi_mask = region_of_interest(edges)
@@ -125,36 +158,80 @@ while True:
     # 7) Hough Lines
     lines = cv2.HoughLinesP(
         cropped,
-        rho=.95,
+        rho=1,
         theta=np.pi / 180,
-        threshold=20,
-        minLineLength=15,
-        maxLineGap=100
+        threshold=18,
+        minLineLength=10,
+        maxLineGap=200
     )
 
-    # 8) Draw averaged left/right lanes
+    # 8) Collect left/right lane points
+    left_points = []
+    right_points = []
+    height, width = frame.shape[:2]
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+
+            # Avoid vertical divide-by-zero
+            if x2 == x1:
+                continue
+
+            slope = (y2 - y1) / (x2 - x1)
+
+            # Only consider lines that look like lanes
+            if slope < -0.7 and x1 < width * 0.5 and x2 < width * 0.5:   # left lane (negative slope)
+                left_points.append((x1, y1))
+                left_points.append((x2, y2))
+            elif slope > 0.7 and x1 > width * 0.5 and x2 > width * 0.5:  # right lane (positive slope)
+                right_points.append((x1, y1))
+                right_points.append((x2, y2))
+        
+    # 9) Fit curves
     line_image = np.zeros_like(frame)
 
-    if lines is not None:
-        # # draw all lines (for debugging)
-        # for line in lines:
-        #     x1, y1, x2, y2 = line[0]
+    left_curve = fit_lane_curve(left_points, frame)
+    right_curve = fit_lane_curve(right_points, frame)
 
-        #     # Avoid vertical divide-by-zero
-        #     if x2 == x1:
-        #         continue
+    if left_curve is not None:
+        cv2.polylines(line_image, [left_curve], isClosed=False, color=(0, 255, 0), thickness=2)
 
-        #     slope = (y2 - y1) / (x2 - x1)
+    if right_curve is not None:
+        cv2.polylines(line_image, [right_curve], isClosed=False, color=(0, 255, 0), thickness=2)
 
-        #     # Only draw if it looks like a lane (angled line)
-        #     if abs(slope) > 0.5:
-        #         cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 5)
+    # # 7) Hough Lines
+    # lines = cv2.HoughLinesP(
+    #     cropped,
+    #     rho=.95,
+    #     theta=np.pi / 180,
+    #     threshold=20,
+    #     minLineLength=15,
+    #     maxLineGap=100
+    # )
 
-        # # Draw averaged lanes
-        averaged_lines = average_slope_intercept(frame, lines)
+    # # 8) Draw averaged left/right lanes
+    # line_image = np.zeros_like(frame)
 
-        for x1, y1, x2, y2 in averaged_lines:
-            cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    # if lines is not None:
+    #     # # draw all lines (for debugging)
+    #     # for line in lines:
+    #     #     x1, y1, x2, y2 = line[0]
+
+    #     #     # Avoid vertical divide-by-zero
+    #     #     if x2 == x1:
+    #     #         continue
+
+    #     #     slope = (y2 - y1) / (x2 - x1)
+
+    #     #     # Only draw if it looks like a lane (angled line)
+    #     #     if abs(slope) > 0.5:
+    #     #         cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 5)
+
+    #     # # Draw averaged lanes
+    #     averaged_lines = average_slope_intercept(frame, lines)
+
+    #     for x1, y1, x2, y2 in averaged_lines:
+    #         cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
     # 9) Overlay lines on original frame
     combo = cv2.addWeighted(frame, 0.8, line_image, 1, 1)
