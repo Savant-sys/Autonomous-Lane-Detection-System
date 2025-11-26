@@ -133,7 +133,8 @@ def fit_lane_curve(points, image):
 
     return curve_points
 
-# Initial empty point lists for preventing freaky lines
+# Initial empty point lists for preventing freaky lines, saves last good curves
+## If this frame doesn’t have enough good lane data, keep using the last stable curve instead of jumping somewhere random basically
 prev_left_curve = None
 prev_right_curve = None
 
@@ -212,6 +213,7 @@ while True:
     if right_curve is not None:
         cv2.polylines(line_image, [right_curve], isClosed=False, color=(0, 255, 0), thickness=2)
 
+    ################################################### Straight lines (older method)
     # # 7) Hough Lines
     # lines = cv2.HoughLinesP(
     #     cropped,
@@ -245,6 +247,7 @@ while True:
 
     #     for x1, y1, x2, y2 in averaged_lines:
     #         cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    ################################################### older method end
 
     # 9) Overlay lines on original frame
     combo = cv2.addWeighted(frame, 0.8, line_image, 1, 1)
