@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 # 0) Open the video
-cap = cv2.VideoCapture("testdashcam.mov")
+cap = cv2.VideoCapture("./videos/testdashcam.mov")
 
 # Safety check
 if not cap.isOpened():
