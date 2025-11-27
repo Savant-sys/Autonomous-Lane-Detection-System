@@ -38,7 +38,7 @@ def filter_colors(frame):
     hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
 
     # White lane mask
-    lower_white = np.array([0, 125, 0])
+    lower_white = np.array([0, 130, 0])
     upper_white = np.array([255, 255, 255])
     white_mask = cv2.inRange(hls, lower_white, upper_white)
 
