@@ -38,7 +38,7 @@ def filter_colors(frame):
     hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
 
     # White lane mask
-    lower_white = np.array([0, 130, 0])
+    lower_white = np.array([0, 127, 0])
     upper_white = np.array([255, 255, 255])
     white_mask = cv2.inRange(hls, lower_white, upper_white)
 
@@ -65,7 +65,6 @@ def make_coordinates(image, line_params):
     # x = (y - b) / m  (rearranged y = mx + b)
     x1 = int((y1 - intercept) / slope)
     x2 = int((y2 - intercept) / slope)
-
     return np.array([x1, y1, x2, y2])
 
 

@@ -6,12 +6,12 @@ def empty(a):
 
 # Load your image (replace 'road_image.jpg' with your actual image file)
 # It's important to use the image you are working with to tune correctly
-img = cv2.imread('pic.png')
-vid = cv2.VideoCapture('testdashcam.mov')
+# img = cv2.imread('pic.png')
+vid = cv2.VideoCapture('./videos/testdashcam.mov')
 
-if img is None:
-    print("Error: Image not found or could not be read.")
-    exit()
+# if img is None:
+#     print("Error: Image not found or could not be read.")
+#     exit()
 
 if vid is None:
     print("Error: Video not found or could not be read.")
@@ -50,7 +50,7 @@ while True:
 
 
     # Convert the image to HLS color space
-    hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
+    hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Create the mask and apply it to the original image
     mask = cv2.inRange(hls, lower_bound, upper_bound)
